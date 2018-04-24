@@ -1,6 +1,6 @@
 (* Ex 0.1 *)
 (* A and B = B and A *)
-(* A and (B or C) ≡ (A andd B) or (A and C) *)
+(* A and (B or C) ≡ (A and B) or (A and C) *)
 
 Inductive truth : Set :=
 | Yes : truth
@@ -49,29 +49,70 @@ Theorem and_dist_or : forall a b c : truth, and a (or b c) = or (and a b) (and a
 Qed.
 
 (* Ex 0.2 *)
-(* flatten (sl₁ ++ sl₂) = flatten sl₁ ++ flatten sl₂ *)
 Require Import List.
 
-Inductive list (T : Set) : Set :=
-| Nil : list T
-| Cons : T -> list T -> list T.
+Section slist.
+  Variable T : Set.
 
-Implicit Arguments Nil [T].
+  Inductive list : Set :=
+  | Nil : list
+  | Cons : T -> list -> list.
 
-Fixpoint app T (ls1 ls2 : list T) : list T :=
-  match ls1 with
+  Fixpoint app (ls1 ls2 : list) : list :=
+    match ls1 with
     | Nil => ls2
     | Cons x ls1' => Cons x (app ls1' ls2)
+    end.
+  
+  Inductive slist : Set :=
+  | SEmpty : slist
+  | SSingle : T -> slist
+  | SConcat : slist -> slist -> slist.
+  
+  Fixpoint flatten (sl : slist) : list :=
+    match sl with
+    | SEmpty => Nil
+    | SSingle x => Cons x Nil
+    | SConcat l₁ l₂ => app (flatten l₁) (flatten l₂)
+    end.
+
+  (* flatten (sl₁ ++ sl₂) = flatten sl₁ ++ flatten sl₂ *)
+  Theorem flat_dist : forall sl₁ sl₂ : slist,
+      flatten (SConcat sl₁ sl₂) = app (flatten sl₁) (flatten sl₂).
+    (* なぜか app を ++ に変えるとうまくいかない *)
+    induction sl₁; reflexivity.
+  Qed.
+End slist.
+  
+(* Ex 0.5 相互再帰 *)
+Inductive even_nat : Set :=
+| O  : even_nat
+| ES : odd_nat -> even_nat
+with odd_nat : Set := 
+     | OS : even_nat -> odd_nat.
+
+Scheme even_nat_mutual := Induction for even_nat Sort Prop
+                          with odd_nat_mutual := Induction for odd_nat Sort Prop.
+
+Eval simpl in (OS O).     (* 1 : odd_nat *)
+Eval simpl in (ES (OS (ES (OS O)))). (* 4 : even_nat *)
+
+Fixpoint add_even (n m: even_nat) : even_nat :=
+  match n with
+  | O => m
+  | ES (OS n') => ES (OS (add_even n' m))
   end.
 
-Inductive slist (T : Set) : Set :=
-| SEmpty : slist T
-| SSingle : T -> slist T
-| SConcat : slist T -> slist T -> slist T.
+Eval simpl in (add_even O O).
+Eval simpl in (add_even O (ES (OS O))).
+Eval simpl in (add_even (ES (OS O)) O).
+Eval simpl in (add_even (ES (OS O)) (ES (OS O))).
 
-Fixpoint flatten T (sl : slist T) : list T :=
-  match sl with
-  | SEmpty _ => Nil
-  | SSingle _ x => Cons x Nil
-  | SConcat _ l₁ l₂ => App (flatten l₁) (flatten l₂)
-  end.
+Theorem O_add_even_n : forall n : even_nat, add_even O n = n.
+  intro; reflexivity.
+Qed.
+
+Theorem add_even_comm : forall n m : even_nat, add_even n m = add_even m n.
+  induction n. simpl.
+  reflexivity.
+  destruct o. 
