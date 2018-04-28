@@ -1,3 +1,4 @@
+Require Import Cpdt.CpdtTactics.
 (* Ex 0.1 *)
 (* A and B = B and A *)
 (* A and (B or C) ≡ (A and B) or (A and C) *)
@@ -54,26 +55,26 @@ Require Import List.
 Section slist.
   Variable T : Set.
 
-  Inductive list : Set :=
-  | Nil : list
-  | Cons : T -> list -> list.
+  (* Inductive list : Set := *)
+  (* | Nil : list *)
+  (* | Cons : T -> list -> list. *)
 
-  Fixpoint app (ls1 ls2 : list) : list :=
-    match ls1 with
-    | Nil => ls2
-    | Cons x ls1' => Cons x (app ls1' ls2)
-    end.
+  (* Fixpoint app (ls1 ls2 : list) : list := *)
+  (*   match ls1 with *)
+  (*   | Nil => ls2 *)
+  (*   | Cons x ls1' => Cons x (app ls1' ls2) *)
+  (*   end. *)
   
   Inductive slist : Set :=
   | SEmpty : slist
   | SSingle : T -> slist
   | SConcat : slist -> slist -> slist.
   
-  Fixpoint flatten (sl : slist) : list :=
+  Fixpoint flatten (sl : slist) : list T :=
     match sl with
-    | SEmpty => Nil
-    | SSingle x => Cons x Nil
-    | SConcat l₁ l₂ => app (flatten l₁) (flatten l₂)
+    | SEmpty => nil             (* Nil ではなくて、もともとの nil を使えばいい *)
+    | SSingle x => x :: nil
+    | SConcat l₁ l₂ => (flatten l₁) ++ (flatten l₂)
     end.
 
   (* flatten (sl₁ ++ sl₂) = flatten sl₁ ++ flatten sl₂ *)
@@ -88,6 +89,7 @@ End slist.
 Inductive even_nat : Set :=
 | O  : even_nat
 | ES : odd_nat -> even_nat
+                    
 with odd_nat : Set := 
      | OS : even_nat -> odd_nat.
 
@@ -97,22 +99,40 @@ Scheme even_nat_mutual := Induction for even_nat Sort Prop
 Eval simpl in (OS O).     (* 1 : odd_nat *)
 Eval simpl in (ES (OS (ES (OS O)))). (* 4 : even_nat *)
 
-Fixpoint add_even (n m: even_nat) : even_nat :=
+Fixpoint add_even_even (n m: even_nat) : even_nat :=
   match n with
   | O => m
-  | ES (OS n') => ES (OS (add_even n' m))
-  end.
+  | ES n' => match m with
+             | O => ES n'
+             | ES m' => ES (OS (add_odd_odd n' m'))
+             end
+  end
 
-Eval simpl in (add_even O O).
-Eval simpl in (add_even O (ES (OS O))).
-Eval simpl in (add_even (ES (OS O)) O).
-Eval simpl in (add_even (ES (OS O)) (ES (OS O))).
+with add_odd_odd (n m: odd_nat) : even_nat :=
+       match n, m with
+       | OS n', OS m' => ES (OS (add_even_even n' m'))
+       end.
 
-Theorem O_add_even_n : forall n : even_nat, add_even O n = n.
+Eval simpl in (add_even_even O O).
+Eval simpl in (add_even_even O (ES (OS O))).
+Eval simpl in (add_even_even (ES (OS O)) O).
+Eval simpl in (add_even_even (ES (OS O)) (ES (OS O))).
+
+Lemma O_add_even_n : forall n : even_nat, add_even_even O n = n.
   intro; reflexivity.
 Qed.
 
-Theorem add_even_comm : forall n m : even_nat, add_even n m = add_even m n.
-  induction n. simpl.
-  reflexivity.
-  destruct o. 
+Theorem add_even_comm : forall n m : even_nat, add_even_even n m = add_even_even m n.
+  apply (even_nat_mutual
+    (fun (e1 : even_nat) => forall (e2 : even_nat),
+         add_even_even e1 e2 = add_even_even e2 e1)
+    (fun (o1 : odd_nat) => forall (o2 : odd_nat),
+         add_odd_odd o1 o2 = add_odd_odd o2 o1)).
+  induction e2; reflexivity.  
+  induction e2. reflexivity.
+  simpl. f_equal. f_equal.
+  apply H.
+  crush.  
+  induction o2; simpl; f_equal. f_equal.
+  apply H.
+Qed.
