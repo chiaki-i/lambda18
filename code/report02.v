@@ -54,16 +54,6 @@ Require Import List.
 
 Section slist.
   Variable T : Set.
-
-  (* Inductive list : Set := *)
-  (* | Nil : list *)
-  (* | Cons : T -> list -> list. *)
-
-  (* Fixpoint app (ls1 ls2 : list) : list := *)
-  (*   match ls1 with *)
-  (*   | Nil => ls2 *)
-  (*   | Cons x ls1' => Cons x (app ls1' ls2) *)
-  (*   end. *)
   
   Inductive slist : Set :=
   | SEmpty : slist
@@ -72,15 +62,14 @@ Section slist.
   
   Fixpoint flatten (sl : slist) : list T :=
     match sl with
-    | SEmpty => nil             (* Nil ではなくて、もともとの nil を使えばいい *)
+    | SEmpty => nil             (* Nil ではなく、STL の nil を使えばいい *)
     | SSingle x => x :: nil
     | SConcat l₁ l₂ => (flatten l₁) ++ (flatten l₂)
     end.
 
   (* flatten (sl₁ ++ sl₂) = flatten sl₁ ++ flatten sl₂ *)
   Theorem flat_dist : forall sl₁ sl₂ : slist,
-      flatten (SConcat sl₁ sl₂) = app (flatten sl₁) (flatten sl₂).
-    (* なぜか app を ++ に変えるとうまくいかない *)
+      flatten (SConcat sl₁ sl₂) = (flatten sl₁) ++ (flatten sl₂).
     induction sl₁; reflexivity.
   Qed.
 End slist.
